@@ -16,28 +16,34 @@ final class AVPlayerLoader {
         case timedOut
     }
     
-    let itemUrl: URL
+    var itemUrl: URL {
+        return (self.playerItem.asset as! AVURLAsset).url
+    }
+    
     let timeoutInterval: TimeInterval
-    
-    private var completion: ((Result) -> Void)?
-    
+    private let playerItem: AVPlayerItem
+
     private var player: AVPlayer?
     private var observation: NSKeyValueObservation?
     private var timer: Timer?
+
+    private var completion: ((Result) -> Void)?
     
     init(_ url: URL, timeoutInterval: TimeInterval = 5.0) {
-        self.itemUrl = url
+        self.playerItem = AVPlayerItem(url: url)
         self.timeoutInterval = timeoutInterval
     }
     
     func load(completion: @escaping (Result) -> Void) {
         self.completion = completion
-        // Start request by initializing instance of `AVPlayer`.
-        print("Start loading asset on \(self.itemUrl)")
-        self.player = AVPlayer(url: self.itemUrl)
         
         self.startObservation()
         self.startTimer()
+
+        // Start request by initializing instance of `AVPlayer`.
+        print("Start loading asset on \(self.itemUrl.absoluteString)")
+        self.player = AVPlayer(playerItem: self.playerItem)
+        
     }
 }
 
@@ -56,12 +62,11 @@ private extension AVPlayerLoader {
     }
     
     func startObservation() {
-        guard let remoteItem = self.player?.currentItem else { return }
         guard self.observation == nil else { return }
         
         // `AVPlayer.status` becomes .readyToPlay even when remote file does not exist.
-        // To avoid that issue, `AVPlayerLoader` observes `AVPlayer.currentItem.status`.
-        self.observation = remoteItem.observe(\.status) { item, change in
+        // To avoid that issue, `AVPlayerLoader` observes `AVPlayerItem.status`.
+        self.observation = playerItem.observe(\.status) { item, change in
             switch item.status {
             case .readyToPlay:
                 print("Completed")
